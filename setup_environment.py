@@ -118,8 +118,24 @@ def process_cleanup():
     success = run_powershell_script(cleanup_script)
     if success:
         log("Proceso de limpieza completado exitosamente.", "SUCCESS")
-        log("Se recomienda reiniciar el sistema antes de continuar con la instalación.", "WARNING")
         
+        # Ejecutar verificador de limpieza
+        verify_cleanup_success = verify_cleanup()
+        if not verify_cleanup_success:
+            log("El verificador de limpieza ha detectado componentes que aún están presentes.", "WARNING")
+            retry = input("¿Deseas intentar ejecutar nuevamente el script de limpieza? (S/N): ")
+            if retry.upper() == "S":
+                log("Ejecutando nuevamente el proceso de limpieza...", "INFO")
+                return process_cleanup()
+            else:
+                log("Se recomienda realizar una limpieza manual de los componentes detectados antes de continuar.", "WARNING")
+                continue_anyway = input("¿Deseas continuar de todos modos con la instalación? (S/N): ")
+                if continue_anyway.upper() != "S":
+                    log("Instalación cancelada por el usuario.", "INFO")
+                    return False
+        
+        # Preguntar por reinicio
+        log("Se recomienda reiniciar el sistema antes de continuar con la instalación.", "WARNING")
         restart = input("¿Quieres reiniciar el sistema ahora? (S/N): ")
         if restart.upper() == "S":
             log("Reiniciando el sistema...", "INFO")
@@ -128,6 +144,21 @@ def process_cleanup():
             sys.exit(0)
     else:
         log("Proceso de limpieza completado con errores. Revisa el archivo de log para más detalles.", "WARNING")
+    
+    return success
+
+def verify_cleanup():
+    """Ejecuta la verificación de limpieza del sistema."""
+    log("VERIFICANDO LIMPIEZA DEL SISTEMA", "TITLE")
+    
+    # Ruta al script de verificación de limpieza
+    verify_cleanup_script = str(Path(__file__).parent / "verify_cleanup.ps1")
+    
+    success = run_powershell_script(verify_cleanup_script)
+    if success:
+        log("Verificación de limpieza completada exitosamente. El sistema está limpio.", "SUCCESS")
+    else:
+        log("Verificación de limpieza completada con advertencias. Algunos componentes aún están presentes.", "WARNING")
     
     return success
 
@@ -204,10 +235,11 @@ def main():
     # Parsear argumentos de línea de comandos
     parser = argparse.ArgumentParser(description="Configuración de entorno de desarrollo para IA/ML en Windows 11")
     parser.add_argument("--clean", action="store_true", help="Ejecutar solo el proceso de limpieza")
+    parser.add_argument("--verify-cleanup", action="store_true", help="Verificar que la limpieza se realizó correctamente")
     parser.add_argument("--install", action="store_true", help="Ejecutar solo el proceso de instalación")
     parser.add_argument("--verify", action="store_true", help="Ejecutar solo el proceso de verificación")
     parser.add_argument("--cudnn", action="store_true", help="Ejecutar solo la configuración de cuDNN")
-    parser.add_argument("--full", action="store_true", help="Ejecutar todo el proceso (limpieza, instalación, verificación, cuDNN)")
+    parser.add_argument("--full", action="store_true", help="Ejecutar todo el proceso (limpieza, verificación de limpieza, instalación, verificación, cuDNN)")
     parser.add_argument("--requirements", action="store_true", help="Mostrar los requisitos del sistema")
     
     args = parser.parse_args()
@@ -235,6 +267,14 @@ def main():
         if args.full and not success:
             log("El proceso de limpieza falló. No se continuará con la instalación.", "ERROR")
             return 1
+    
+    if args.verify_cleanup or (args.full and not args.clean):
+        success = verify_cleanup() and success
+        if args.full and not success:
+            proceed = input("La verificación de limpieza falló. ¿Deseas continuar de todos modos? (S/N): ")
+            if proceed.upper() != "S":
+                log("Instalación cancelada por el usuario.", "INFO")
+                return 1
     
     if args.install or args.full:
         success = process_installation() and success
