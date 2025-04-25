@@ -241,3 +241,69 @@ function Wait-ForProcess {
     
     return $true
 }
+
+# Función para verificar y limpiar entradas de registro huérfanas
+function Check-RegistryOrphanedEntries {
+    param (
+        [string]$RegistryPath,
+        [string]$SearchPattern,
+        [string]$Description
+    )
+    
+    Log-Action "Verificando entradas de registro huérfanas para $Description en $RegistryPath..." "INFO" $true
+    
+    if (-not (Test-Path $RegistryPath -ErrorAction SilentlyContinue)) {
+        Log-Action "La ruta de registro $RegistryPath no existe" "DEBUG"
+        return
+    }
+    
+    try {
+        $regEntries = Get-ChildItem -Path $RegistryPath -Recurse -ErrorAction SilentlyContinue | 
+                      Where-Object { $_.Name -like "*$SearchPattern*" -or $_.Property -like "*$SearchPattern*" }
+        
+        if ($regEntries -and $regEntries.Count -gt 0) {
+            Log-Action "Encontradas $($regEntries.Count) entradas de registro relacionadas con $Description" "INFO" $true
+            
+            $i = 0
+            foreach ($entry in $regEntries) {
+                $i++
+                Log-Action "Eliminando entrada de registro: $($entry.Name)" "INFO"
+                
+                try {
+                    Remove-Item -Path $entry.PSPath -Recurse -Force -ErrorAction Stop
+                    Log-Action "Entrada de registro eliminada correctamente" "SUCCESS"
+                }
+                catch {
+                    Log-Action "Error al eliminar entrada de registro: $_" "ERROR"
+                }
+                
+                $percent = [Math]::Round(($i / $regEntries.Count) * 100)
+                Show-Progress -Activity "Limpieza de registro" -Status "Limpiando entradas de $Description" -PercentComplete $percent
+            }
+            
+            Log-Action "Limpieza de entradas de registro para $Description completada" "SUCCESS" $true
+        }
+        else {
+            Log-Action "No se encontraron entradas de registro huérfanas para $Description" "SUCCESS" $true
+        }
+    }
+    catch {
+        Log-Action "Error al verificar entradas de registro para $Description: $_" "ERROR" $true
+    }
+}
+
+# Mostrar banner de inicio
+Write-Host "`n=================================================================" -ForegroundColor Cyan
+Write-Host "            LIMPIEZA DE ENTORNO DE DESARROLLO" -ForegroundColor Cyan
+Write-Host "=================================================================`n" -ForegroundColor Cyan
+
+# Mostrar advertencia y pedir confirmación
+Log-Action "¡ADVERTENCIA! Este script desinstalará completamente Visual Studio, Python, CUDA y componentes relacionados." "WARNING" $true
+Log-Action "Asegúrate de haber hecho una copia de seguridad de tus proyectos y datos importantes." "WARNING" $true
+$confirmation = Read-Host "¿Deseas continuar? (S/N)"
+if ($confirmation -ne "S") {
+    Log-Action "Operación cancelada por el usuario." "WARNING" $true
+    exit 0
+}
+
+Log-Action "Iniciando proceso de limpieza del sistema..." "INFO" $true
