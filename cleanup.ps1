@@ -307,3 +307,60 @@ if ($confirmation -ne "S") {
 }
 
 Log-Action "Iniciando proceso de limpieza del sistema..." "INFO" $true
+
+# 1. Preparación: Verificar y cerrar procesos en ejecución
+Log-Action "PASO 0: Preparación - Verificando procesos en ejecución" "INFO" $true
+
+$processesToCheck = @(
+    @{ Name = "devenv"; Description = "Visual Studio" },
+    @{ Name = "VSIXInstaller"; Description = "Visual Studio VSIX Installer" },
+    @{ Name = "vs_installer"; Description = "Visual Studio Installer" },
+    @{ Name = "vs_bootstrapper"; Description = "Visual Studio Bootstrapper" },
+    @{ Name = "MSBuild"; Description = "Microsoft Build Engine" },
+    @{ Name = "python"; Description = "Python" },
+    @{ Name = "pip"; Description = "Python Package Installer" },
+    @{ Name = "nvcc"; Description = "NVIDIA CUDA Compiler" },
+    @{ Name = "nvidia-smi"; Description = "NVIDIA System Management Interface" }
+)
+
+$processesRunning = $false
+
+foreach ($proc in $processesToCheck) {
+    Log-Action "Verificando procesos de $($proc.Description) ($($proc.Name))..." "INFO" $true
+    
+    $processes = Get-Process -Name $proc.Name -ErrorAction SilentlyContinue
+    if ($processes.Count -gt 0) {
+        $processesRunning = $true
+        Log-Action "Procesos de $($proc.Description) en ejecución: $($processes.Count)" "WARNING" $true
+        foreach ($process in $processes | Select-Object -First 5) {
+            Log-Action "  - PID: $($process.Id), Nombre: $($process.ProcessName), Título: $($process.MainWindowTitle)" "WARNING"
+        }
+        
+        if ($processes.Count -gt 5) {
+            Log-Action "  ... y $($processes.Count - 5) procesos más" "WARNING"
+        }
+        
+        $waitForClose = Read-Host "¿Deseas esperar a que estos procesos terminen? (S/N)"
+        if ($waitForClose -eq "S") {
+            Log-Action "Esperando a que los procesos de $($proc.Description) terminen..." "INFO" $true
+            Wait-ForProcess -ProcessName $proc.Name -TimeoutSeconds 180 -CheckIntervalSeconds 5
+        }
+        else {
+            $forceClose = Read-Host "¿Deseas forzar el cierre de estos procesos? (S/N)"
+            if ($forceClose -eq "S") {
+                Log-Action "Forzando cierre de procesos de $($proc.Description)..." "WARNING" $true
+                try {
+                    Stop-Process -Name $proc.Name -Force -ErrorAction SilentlyContinue
+                    Log-Action "Procesos de $($proc.Description) terminados forzosamente" "SUCCESS" $true
+                    Start-Sleep -Seconds 2  # Esperar un momento para que los procesos terminen
+                }
+                catch {
+                    Log-Action "Error al forzar el cierre de procesos: $_" "ERROR" $true
+                }
+            }
+        }
+    }
+    else {
+        Log-Action "No se encontraron procesos de $($proc.Description) en ejecución" "SUCCESS" $true
+    }
+}
