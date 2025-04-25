@@ -364,3 +364,147 @@ foreach ($proc in $processesToCheck) {
         Log-Action "No se encontraron procesos de $($proc.Description) en ejecución" "SUCCESS" $true
     }
 }
+
+# 2. Desinstalar versiones de Visual Studio
+Log-Action "PASO 1: Desinstalando Visual Studio y componentes relacionados" "INFO" $true
+Log-Action "Buscando instalaciones de Visual Studio..." "INFO" $true
+
+# Buscar instalaciones de Visual Studio
+$vsInstalls = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like "*Visual Studio*" }
+if ($vsInstalls) {
+    Log-Action "Se encontraron $(($vsInstalls | Measure-Object).Count) instalaciones de Visual Studio:" "INFO" $true
+    
+    # Mostrar todas las instalaciones encontradas
+    foreach ($vs in $vsInstalls) {
+        Log-Action "  - $($vs.Name) (Versión: $($vs.Version), ID: $($vs.IdentifyingNumber))" "INFO" $true
+    }
+    
+    $i = 0
+    foreach ($vs in $vsInstalls) {
+        $i++
+        Log-Action "[$i/$(($vsInstalls | Measure-Object).Count)] Desinstalando $($vs.Name)..." "INFO" $true
+        Log-Action "ID: $($vs.IdentifyingNumber)" "DEBUG"
+        Log-Action "Versión: $($vs.Version)" "DEBUG"
+        Log-Action "Ruta: $($vs.InstallLocation)" "DEBUG"
+        
+        Show-Progress -Activity "Desinstalando Visual Studio" -Status "Desinstalando $($vs.Name)" -PercentComplete ([math]::Round(($i / ($vsInstalls | Measure-Object).Count) * 100))
+        
+        try {
+            Log-Action "Iniciando desinstalación de $($vs.Name)" "COMMAND"
+            $vs.Uninstall() | Out-Null
+            
+            # Esperar a que el proceso msiexec termine
+            Log-Action "Esperando a que el desinstalador termine..." "WAIT" $true
+            Wait-ForProcess -ProcessName "msiexec" -TimeoutSeconds 300 -CheckIntervalSeconds 10
+            
+            Log-Action "Visual Studio $($vs.Name) desinstalado correctamente." "SUCCESS" $true
+        }
+        catch {
+            Log-Action "Error al desinstalar $($vs.Name): $_" "ERROR" $true
+        }
+    }
+} else {
+    Log-Action "No se encontraron instalaciones de Visual Studio por WMI." "INFO" $true
+}
+
+# Desinstalar Visual Studio usando el instalador oficial (más confiable)
+Log-Action "Buscando Visual Studio Installer para una desinstalación más limpia..." "INFO" $true
+$vsInstallerPaths = @(
+    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe",
+    "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vs_installer.exe"
+)
+
+$vsInstallerFound = $false
+foreach ($vsInstallerPath in $vsInstallerPaths) {
+    if (Test-Path $vsInstallerPath) {
+        $vsInstallerFound = $true
+        Log-Action "Visual Studio Installer encontrado en: $vsInstallerPath" "INFO" $true
+        Log-Action "Desinstalando Visual Studio usando el instalador oficial..." "INFO" $true
+        
+        try {
+            # Primero, ejecutar vs_installer para asegurar que se actualiza el instalador
+            Log-Action "Actualizando Visual Studio Installer..." "INFO" $true
+            $command = "Start-Process -FilePath '$vsInstallerPath' -ArgumentList 'update --quiet' -Wait -PassThru"
+            Execute-Command -Command $command -Description "Actualización del Visual Studio Installer"
+            
+            # Ahora desinstalar todas las instancias
+            Log-Action "Desinstalando todas las instancias de Visual Studio (esto puede tardar varios minutos)..." "INFO" $true
+            $command = "Start-Process -FilePath '$vsInstallerPath' -ArgumentList 'uninstall --all --force' -Wait -PassThru"
+            $result = Execute-Command -Command $command -Description "Desinstalación de todas las instancias de Visual Studio"
+            
+            # Esperar a que los procesos relacionados terminen
+            Log-Action "Esperando a que el instalador de Visual Studio termine..." "WAIT" $true
+            Wait-ForProcess -ProcessName "vs_installer" -TimeoutSeconds 600 -CheckIntervalSeconds 15
+            
+            if ($result) {
+                Log-Action "Proceso de desinstalación de Visual Studio completado." "SUCCESS" $true
+            } else {
+                Log-Action "El proceso de desinstalación de Visual Studio puede haber tenido problemas." "WARNING" $true
+            }
+        }
+        catch {
+            Log-Action "Error al ejecutar el desinstalador de Visual Studio: $_" "ERROR" $true
+        }
+    }
+}
+
+if (-not $vsInstallerFound) {
+    Log-Action "No se encontró el instalador de Visual Studio. Continuando con otros métodos de limpieza." "WARNING" $true
+}
+
+# 3. Desinstalar Build Tools y otros componentes de Visual Studio
+Log-Action "PASO 2: Desinstalando Build Tools y componentes de desarrollo" "INFO" $true
+Log-Action "Buscando Build Tools y componentes de Visual Studio..." "INFO" $true
+
+$buildToolPatterns = @(
+    "*Build Tools*",
+    "*Microsoft Visual C++*",
+    "*Microsoft .NET*",
+    "*Windows SDK*"
+)
+
+$allBuildTools = @()
+
+foreach ($pattern in $buildToolPatterns) {
+    $components = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like $pattern }
+    if ($components) {
+        $allBuildTools += $components
+        Log-Action "Encontrados $(($components | Measure-Object).Count) componentes que coinciden con '$pattern'" "INFO" $true
+    }
+}
+
+if ($allBuildTools.Count -gt 0) {
+    Log-Action "Se encontraron $($allBuildTools.Count) componentes de Build Tools en total:" "INFO" $true
+    
+    # Mostrar todos los componentes encontrados
+    foreach ($bt in $allBuildTools) {
+        Log-Action "  - $($bt.Name) (Versión: $($bt.Version))" "INFO" $true
+    }
+    
+    $i = 0
+    foreach ($bt in $allBuildTools) {
+        $i++
+        Log-Action "[$i/$($allBuildTools.Count)] Desinstalando $($bt.Name)..." "INFO" $true
+        Log-Action "ID: $($bt.IdentifyingNumber)" "DEBUG"
+        Log-Action "Versión: $($bt.Version)" "DEBUG"
+        Log-Action "Ruta: $($bt.InstallLocation)" "DEBUG"
+        
+        Show-Progress -Activity "Desinstalando Build Tools" -Status "Desinstalando $($bt.Name)" -PercentComplete ([math]::Round(($i / $allBuildTools.Count) * 100))
+        
+        try {
+            Log-Action "Iniciando desinstalación de $($bt.Name)" "COMMAND"
+            $bt.Uninstall() | Out-Null
+            
+            # Esperar a que los procesos relacionados terminen
+            Log-Action "Esperando a que el desinstalador termine..." "WAIT" $true
+            Wait-ForProcess -ProcessName "msiexec" -TimeoutSeconds 300 -CheckIntervalSeconds 10
+            
+            Log-Action "$($bt.Name) desinstalado correctamente." "SUCCESS" $true
+        }
+        catch {
+            Log-Action "Error al desinstalar $($bt.Name): $_" "ERROR" $true
+        }
+    }
+} else {
+    Log-Action "No se encontraron Build Tools por WMI." "INFO" $true
+}
