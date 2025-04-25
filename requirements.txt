@@ -1,0 +1,44 @@
+# Bibliotecas base para científicas y datos
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+scikit-learn>=1.2.0
+jupyter>=1.0.0
+ipython>=8.10.0
+tqdm>=4.65.0
+
+# PyTorch y extensiones (instaladas por separado con CUDA)
+# torch>=2.0.0
+# torchvision>=0.15.0
+# torchaudio>=2.0.0
+
+# Procesamiento de lenguaje natural y LLMs
+transformers>=4.35.0
+datasets>=2.13.0
+tokenizers>=0.14.0
+huggingface-hub>=0.16.0
+sentencepiece>=0.1.99
+accelerate>=0.22.0
+
+# Procesamiento de datos
+pillow>=10.0.0
+opencv-python>=4.8.0
+pytesseract>=0.3.10
+
+# Manejo de APIs y servicios web
+requests>=2.31.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-dotenv>=1.0.0
+
+# Herramientas de desarrollo
+pytest>=7.3.0
+black>=23.3.0
+flake8>=6.0.0
+mypy>=1.3.0
+
+# Serialización y formatos de datos
+pyyaml>=6.0.0
+json5>=0.9.14
