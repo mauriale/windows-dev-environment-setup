@@ -1,38 +1,62 @@
 # Configuración de Entorno de Desarrollo para IA/ML en Windows 11
 
-Este repositorio contiene scripts para configurar un entorno de desarrollo limpio y coherente para IA/ML en Windows 11, solucionando problemas de compatibilidad entre Visual Studio, CUDA, Python y otros componentes.
+Este repositorio contiene scripts automatizados para configurar un entorno de desarrollo limpio y coherente para Inteligencia Artificial y Machine Learning en Windows 11, solucionando problemas de compatibilidad entre Visual Studio, CUDA, Python y otros componentes.
 
-## Componentes que se instalarán
+## 🚀 Características Principales
 
-- Visual Studio Community 2022 con cargas de trabajo necesarias
-- Python 3.10 (versión estable y compatible con PyTorch)
-- CUDA 12.4 para desarrollo con GPU
-- cuDNN compatible con CUDA 12.4
-- PyTorch con soporte para CUDA
-- Bibliotecas comunes para ML/NLP/LLM
+- **Limpieza Completa**: Eliminación segura de instalaciones anteriores para evitar conflictos
+- **Verificación Exhaustiva**: Comprobación de limpieza e instalación correcta
+- **Instalación Automatizada**: Componentes configurados con versiones compatibles
+- **Solución de Problemas**: Guía detallada para resolver inconvenientes comunes
+- **Preparado para GPU**: Soporte óptimo para CUDA y desarrollo con aceleración GPU
 
-## Requisitos previos
+## 📋 Componentes que se instalarán
 
-- Windows 11
+- **Visual Studio Community 2022** con cargas de trabajo necesarias:
+  - Desarrollo de escritorio con C++
+  - Desarrollo de Python
+  - Desarrollo de datos
+  - Desarrollo multiplataforma con C++
+  
+- **Python 3.10.11** (versión estable y compatible con PyTorch)
+
+- **CUDA 12.4** para desarrollo con GPU:
+  - Herramientas de compilación
+  - Configuración de PATH y variables de entorno
+  
+- **cuDNN** compatible con CUDA 12.4 (requiere descarga manual)
+
+- **Bibliotecas Python para IA/ML**:
+  - PyTorch con soporte CUDA
+  - NumPy, SciPy, Pandas, Matplotlib, Scikit-learn
+  - Hugging Face Transformers y Datasets
+  - Herramientas de procesamiento de datos y desarrollo
+
+## 💻 Requisitos previos
+
+- Windows 11 (64 bits)
 - Derechos de administrador
 - Conexión a Internet
 - Tarjeta gráfica NVIDIA compatible con CUDA
+- Al menos 50 GB de espacio libre en disco
+- Al menos 8 GB de RAM (16 GB recomendado)
 
-## Instrucciones de uso
+## 🔧 Instrucciones de uso
 
 ### Opción 1: Script todo-en-uno (Recomendado)
 
-1. Clona este repositorio
-2. Abre PowerShell como administrador
-3. Ejecuta: `python setup_environment.py --full`
+1. Clona este repositorio:
+   ```bash
+   git clone https://github.com/mauriale/windows-dev-environment-setup.git
+   cd windows-dev-environment-setup
+   ```
 
-El script manejará todo el proceso, incluyendo:
-- Verificación de requisitos
-- Limpieza del sistema
-- Verificación de la limpieza
-- Instalación de componentes
-- Verificación de la instalación
-- Configuración de variables de entorno
+2. Abre PowerShell como administrador y ejecuta:
+   ```powershell
+   python setup_environment.py --full
+   ```
+
+El script manejará todo el proceso automáticamente con las pausas necesarias.
 
 ### Opción 2: Ejecución paso a paso
 
@@ -63,57 +87,53 @@ Si prefieres ejecutar los pasos manualmente:
    python verify.py
    ```
 
-## Explicación de los scripts
+## 📚 Explicación detallada de los scripts
 
 ### cleanup.ps1
 Script de PowerShell que desinstala completamente todos los componentes conflictivos:
-- Visual Studio y componentes relacionados
-- Python y bibliotecas
-- CUDA, cuDNN y componentes NVIDIA
-- Limpia variables de entorno
-- Elimina carpetas residuales
-- Limpia registros
+- Cierra procesos en ejecución relacionados con los componentes
+- Desinstala Visual Studio, Python, CUDA y componentes relacionados
+- Limpia variables de entorno y PATH
+- Elimina carpetas residuales y entradas de registro
 
 ### verify_cleanup.ps1
-Script de PowerShell que verifica que la limpieza se ha realizado correctamente:
-- Verifica que no quedan instalaciones de Visual Studio
-- Verifica que no quedan instalaciones de Python
-- Verifica que no quedan instalaciones de CUDA/cuDNN
-- Verifica que las variables de entorno están limpias
-- Verifica que los registros están limpios
-- Genera un informe detallado con recomendaciones
-
-Este script es crucial ejecutarlo después de la limpieza y antes de la instalación para asegurar que no habrá conflictos.
+Script de PowerShell que verifica exhaustivamente que la limpieza se ha completado:
+- Comprueba instalaciones residuales de Visual Studio, Python y CUDA
+- Verifica variables de entorno y PATH
+- Comprueba carpetas y registros
+- Genera un informe detallado con recomendaciones específicas
 
 ### install.ps1
-Script de PowerShell que instala todos los componentes necesarios:
-- Visual Studio 2022 Community con las cargas de trabajo necesarias
-- Python 3.10 con pip y bibliotecas esenciales
-- CUDA 12.4 para desarrollo con GPU
-- Configura variables de entorno y rutas
+Script de PowerShell que instala y configura todos los componentes necesarios:
+- Descarga e instala Visual Studio 2022 con las cargas de trabajo especificadas
+- Instala Python 3.10.11 y configura PATH
+- Descarga e instala CUDA 12.4
+- Configura variables de entorno
+- Instala bibliotecas Python esenciales para IA/ML
 
 ### setup_cudnn.ps1
-Script auxiliar para instalar cuDNN después de descargarlo manualmente:
-- Extrae el archivo cuDNN descargado
+Script auxiliar que facilita la instalación de cuDNN:
+- Guía al usuario para descargar el paquete cuDNN adecuado
+- Extrae archivos automáticamente (compatible con ZIP y TAR.GZ)
 - Copia los archivos a las ubicaciones correctas de CUDA
 - Configura variables de entorno si es necesario
 
 ### verify.py
-Script de Python que verifica que todos los componentes se han instalado correctamente:
-- Verifica Visual Studio y sus cargas de trabajo
+Script de Python que realiza verificaciones exhaustivas del entorno:
+- Comprueba la correcta instalación de Visual Studio y sus componentes
 - Verifica Python y sus bibliotecas
-- Verifica CUDA, nvcc y soporte para GPU
-- Verifica PyTorch con soporte CUDA
-- Verifica bibliotecas adicionales para ML/NLP/LLM
+- Comprueba CUDA, nvcc y cuDNN
+- Verifica que PyTorch pueda acceder a la GPU
+- Genera un informe detallado del estado del sistema
 
 ### setup_environment.py
-Script orquestador en Python que puede ejecutar todo el proceso desde un único comando:
-- Permite ejecutar pasos específicos o todo el proceso
-- Verifica prerrequisitos
-- Maneja errores y excepciones
-- Ofrece recomendaciones según los resultados
+Script orquestador en Python que integra todo el proceso:
+- Interfaz unificada para todo el flujo de trabajo
+- Control granular de cada fase del proceso
+- Gestión de errores y reintentos
+- Recomendaciones personalizadas
 
-## Opciones del script setup_environment.py
+## ⚙️ Opciones del script setup_environment.py
 
 ```
 python setup_environment.py --help
@@ -129,26 +149,83 @@ python setup_environment.py --help
 | --verify | Ejecuta solo el proceso de verificación |
 | --full | Ejecuta todo el proceso completo |
 
-## Solución de problemas
+## 🔍 Solución de problemas
 
-Si encuentras problemas durante la instalación, consulta el archivo `troubleshooting.md` para soluciones comunes.
+El repositorio incluye un archivo `troubleshooting.md` con soluciones para problemas comunes:
 
-## Precaución
+- **Problemas generales**: Permisos de PowerShell, ejecución de scripts
+- **Problemas de limpieza**: Componentes difíciles de desinstalar
+- **Problemas de instalación**: Errores específicos para cada componente
+- **Problemas con PyTorch**: Detección de CUDA, importación de bibliotecas
+- **Problemas de compatibilidad**: Entre Visual Studio, CUDA y Python
+- **Problemas de rendimiento**: Optimización de GPU, controladores
 
-- **¡IMPORTANTE!** El script de limpieza eliminará todas las versiones de Visual Studio, Python, CUDA y componentes relacionados.
+## ⚠️ Precaución
+
+- **¡IMPORTANTE!** El script de limpieza eliminará todas las versiones existentes de Visual Studio, Python, CUDA y componentes relacionados.
 - **Haz una copia de seguridad de tus proyectos y datos importantes antes de ejecutar estos scripts.**
-- Si tienes configuraciones personalizadas que deseas mantener, revisa y modifica los scripts según sea necesario antes de ejecutarlos.
+- Si tienes configuraciones personalizadas que deseas mantener, revisa y modifica los scripts según sea necesario.
 
-## Flujo de trabajo recomendado
+## 📋 Flujo de trabajo recomendado
 
 1. Hacer copia de seguridad de datos importantes
-2. Ejecutar `python setup_environment.py --requirements` para verificar requisitos
-3. Ejecutar `python setup_environment.py --clean` para limpiar el sistema
-4. Ejecutar `python setup_environment.py --verify-cleanup` para confirmar la limpieza
-5. Reiniciar el sistema
-6. Ejecutar `python setup_environment.py --install` para instalar componentes
-7. Descargar cuDNN manualmente desde el sitio de NVIDIA
-8. Ejecutar `python setup_environment.py --cudnn` para configurar cuDNN
-9. Ejecutar `python setup_environment.py --verify` para verificar la instalación
+2. Verificar los requisitos del sistema:
+   ```powershell
+   python setup_environment.py --requirements
+   ```
+3. Limpiar el sistema:
+   ```powershell
+   python setup_environment.py --clean
+   ```
+4. Verificar la limpieza:
+   ```powershell
+   python setup_environment.py --verify-cleanup
+   ```
+5. **Reiniciar el sistema**
+6. Instalar componentes:
+   ```powershell
+   python setup_environment.py --install
+   ```
+7. Descargar cuDNN desde [NVIDIA Developer](https://developer.nvidia.com/cudnn) (requiere cuenta gratuita)
+8. Configurar cuDNN:
+   ```powershell
+   python setup_environment.py --cudnn
+   ```
+9. Verificar la instalación:
+   ```powershell
+   python setup_environment.py --verify
+   ```
 
-Alternativamente, ejecutar `python setup_environment.py --full` para realizar todo el proceso en un solo paso (con las pausas necesarias).
+## 🛠️ Personalización
+
+Los scripts están diseñados para ser fácilmente personalizables:
+
+- Modifica las versiones de los componentes en `install.ps1`
+- Ajusta las bibliotecas Python en `requirements.txt`
+- Adapta los pasos de limpieza en `cleanup.ps1` según tus necesidades
+
+## 📊 Verificación de PyTorch con CUDA
+
+Después de la instalación, puedes verificar que PyTorch detecta correctamente CUDA:
+
+```python
+import torch
+print(f"PyTorch version: {torch.__version__}")
+print(f"CUDA disponible: {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"Dispositivos CUDA: {torch.cuda.device_count()}")
+    print(f"Nombre del dispositivo CUDA: {torch.cuda.get_device_name(0)}")
+    print(f"Versión de CUDA: {torch.version.cuda}")
+```
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Si encuentras errores o tienes mejoras, por favor:
+
+1. Crea un issue para discutir el cambio propuesto
+2. Envía un Pull Request con tus mejoras
+3. Mantén el mismo estilo de código y documentación
+
+## 📜 Licencia
+
+Este proyecto está disponible bajo la licencia MIT. Consulta el archivo LICENSE para más detalles.
