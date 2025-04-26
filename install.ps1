@@ -64,6 +64,22 @@ function Download-File {
     }
 }
 
+# Función para verificar la instalación de un componente de CUDA
+function Verify-CudaComponent {
+    param (
+        [string]$ComponentName,
+        [string]$FilePath
+    )
+    
+    if (Test-Path $FilePath) {
+        Log-Action "Componente CUDA $ComponentName verificado: $FilePath" "SUCCESS"
+        return $true
+    } else {
+        Log-Action "Componente CUDA $ComponentName no encontrado: $FilePath" "ERROR"
+        return $false
+    }
+}
+
 # Crear carpeta temporal
 $tempFolder = Join-Path $env:TEMP "DevEnvSetup"
 if (-not (Test-Path $tempFolder)) {
@@ -180,7 +196,7 @@ else {
     Log-Action "No se pudo descargar Python $pythonVersion." "ERROR"
 }
 
-# Paso 5: Instalación de CUDA
+# Paso 5: Instalación de CUDA y sus componentes
 Log-Action "Iniciando instalación de CUDA $cudaVersion..." "INFO"
 
 $cudaInstallerPath = Join-Path $tempFolder "cuda_installer.exe"
@@ -189,8 +205,14 @@ $cudaDownloaded = Download-File -Url $cudaUrl -OutputFile $cudaInstallerPath
 if ($cudaDownloaded) {
     Log-Action "Ejecutando instalador de CUDA $cudaVersion..." "INFO"
     
-    # Argumentos para instalación silenciosa
-    $cudaInstallArgs = "-s"
+    # Lista de componentes específicos para instalar
+    $cudaComponents = "nvcc_$($cudaVersion.Substring(0, 4)),cudart_$($cudaVersion.Substring(0, 4)),cufft_$($cudaVersion.Substring(0, 4)),cublas_$($cudaVersion.Substring(0, 4)),curand_$($cudaVersion.Substring(0, 4))"
+    
+    # Argumentos para instalación con componentes específicos
+    # Nota: -s es silencioso, pero podemos usar -install-components para especificar componentes particulares
+    $cudaInstallArgs = "-s -install-components=$cudaComponents"
+    
+    Log-Action "Instalando los siguientes componentes CUDA: $cudaComponents" "INFO"
     
     try {
         $process = Start-Process -FilePath $cudaInstallerPath -ArgumentList $cudaInstallArgs -PassThru -Wait
@@ -198,12 +220,13 @@ if ($cudaDownloaded) {
             Log-Action "CUDA $cudaVersion instalado correctamente." "SUCCESS"
             
             # Configurar variables de entorno para CUDA
-            [Environment]::SetEnvironmentVariable("CUDA_PATH", "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$($cudaVersion.Substring(0, 4))", "Machine")
-            [Environment]::SetEnvironmentVariable("CUDA_PATH_V$($cudaVersion.Replace('.', '_'))", "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$($cudaVersion.Substring(0, 4))", "Machine")
+            $cudaPathVersion = $cudaVersion.Substring(0, 4)  # Usar sólo "12.4" de "12.4.0"
+            [Environment]::SetEnvironmentVariable("CUDA_PATH", "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$cudaPathVersion", "Machine")
+            [Environment]::SetEnvironmentVariable("CUDA_PATH_V$($cudaPathVersion.Replace('.', '_'))", "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$cudaPathVersion", "Machine")
             
             # Agregar rutas de CUDA a PATH
-            $cudaBinPath = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$($cudaVersion.Substring(0, 4))\bin"
-            $cudaLibPath = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$($cudaVersion.Substring(0, 4))\libnvvp"
+            $cudaBinPath = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$cudaPathVersion\bin"
+            $cudaLibPath = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$cudaPathVersion\libnvvp"
             
             $machPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
             if ($machPath -notlike "*$cudaBinPath*") {
@@ -214,7 +237,32 @@ if ($cudaDownloaded) {
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
             }
             
-            # Verificar la instalación
+            # Verificar la instalación de los componentes principales de CUDA
+            $cudaBasePath = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$cudaPathVersion"
+            $allComponentsInstalled = $true
+            
+            # Verificar nvcc
+            $allComponentsInstalled = $allComponentsInstalled -and (Verify-CudaComponent -ComponentName "nvcc" -FilePath "$cudaBasePath\bin\nvcc.exe")
+            
+            # Verificar cudart
+            $allComponentsInstalled = $allComponentsInstalled -and (Verify-CudaComponent -ComponentName "cudart" -FilePath "$cudaBasePath\bin\cudart64_$($cudaPathVersion.Replace('.', '')).dll")
+            
+            # Verificar cufft
+            $allComponentsInstalled = $allComponentsInstalled -and (Verify-CudaComponent -ComponentName "cufft" -FilePath "$cudaBasePath\bin\cufft64_$($cudaPathVersion.Replace('.', '')).dll")
+            
+            # Verificar cublas
+            $allComponentsInstalled = $allComponentsInstalled -and (Verify-CudaComponent -ComponentName "cublas" -FilePath "$cudaBasePath\bin\cublas64_$($cudaPathVersion.Replace('.', '')).dll")
+            
+            # Verificar curand
+            $allComponentsInstalled = $allComponentsInstalled -and (Verify-CudaComponent -ComponentName "curand" -FilePath "$cudaBasePath\bin\curand64_$($cudaPathVersion.Replace('.', '')).dll")
+            
+            if ($allComponentsInstalled) {
+                Log-Action "Todos los componentes de CUDA verificados correctamente." "SUCCESS"
+            } else {
+                Log-Action "Algunos componentes de CUDA no se instalaron correctamente. Intenta reinstalar CUDA manualmente." "WARNING"
+            }
+            
+            # Verificar nvcc específicamente ya que es crítico
             $nvccPath = & where.exe nvcc 2>$null
             if ($nvccPath) {
                 $nvccVersion = & nvcc --version 2>&1
@@ -324,7 +372,12 @@ Log-Action "Instalación completada." "SUCCESS"
 Log-Action "Componentes instalados:" "INFO"
 Log-Action "- Visual Studio $vsVersion Community" "INFO"
 Log-Action "- Python $pythonVersion" "INFO"
-Log-Action "- CUDA $cudaVersion" "INFO"
+Log-Action "- CUDA $cudaVersion con los componentes:" "INFO"
+Log-Action "  - nvcc_$($cudaVersion.Substring(0, 4))" "INFO"
+Log-Action "  - cudart_$($cudaVersion.Substring(0, 4))" "INFO"
+Log-Action "  - cufft_$($cudaVersion.Substring(0, 4))" "INFO"
+Log-Action "  - cublas_$($cudaVersion.Substring(0, 4))" "INFO"
+Log-Action "  - curand_$($cudaVersion.Substring(0, 4))" "INFO"
 Log-Action "- Bibliotecas de Python para IA/ML" "INFO"
 Log-Action "Pendiente: Instalación manual de cuDNN (ver instrucciones)" "WARNING"
 
